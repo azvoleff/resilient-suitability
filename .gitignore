@@ -10,6 +10,7 @@
 *.o
 *.dll
 *.so
+*.kml
 src-i386
 src-x64
 .Rproj.user
