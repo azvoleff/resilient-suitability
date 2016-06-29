@@ -7,7 +7,8 @@ library(rgdal)
 library(tools)
 library(gfcanalysis)
 
-data_base <- 'H:/Data'
+#data_base <- 'H:/Data'
+data_base <- 'O:/Data'
 iso3 <- 'TZA'
 res_degrees <- .08333333
 clipsrc <- file.path(data_base, 'Global', 'GADM', 'TZA_adm0.shp')

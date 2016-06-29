@@ -42,6 +42,10 @@ possible_maize_areas <- function(iso3='TZA') {
     # Normalize by largest gap
     ygap_diff_norm <- ygap_diff / cellStats(ygap_diff, 'max')
 
+    ##########################################################################
+    ### TODO: Exclude degraded areas
+
+
     return(ygap_diff * acy_exclude)
 }
 
@@ -49,4 +53,3 @@ poss <- possible_maize_areas()
 poss_poly <- rasterToPolygons(poss)
 writeOGR(poss_poly, 'AGRA_TZA_poss_areas.kml', 'AGRA_TZA_poss_areas', 
          driver='KML', overwrite=TRUE)
-

@@ -12,7 +12,6 @@ ciaf_weights <- function(iso3='TZA') {
 potential <- mask(poss, get_country_poly())
 potential <- potential/cellStats(potential, 'max')
 
-writeRaster(potential, filename='output.tif')
 potential_poly <- rasterToPolygons(poss)
 writeOGR(potential_poly, 'AGRA_TZA_output.kml', 'layer', driver='KML', 
          overwrite=TRUE)
