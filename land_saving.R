@@ -53,8 +53,10 @@ excluded_areas <- function(iso3='TZA') {
              overwrite=TRUE)
 
     ##########################################################################
+    ### Forests
+
+    ##########################################################################
     ### Water
 }
 
-poss <- poss * wdpa_ok
-
+poss <- poss * excluded_areas()
