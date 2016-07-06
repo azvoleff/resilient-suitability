@@ -54,3 +54,8 @@ setup_vector_layer <- function(dataset) {
             #clipsrc=clipsrc, simplify=res_degrees/10)
     readOGR(dirname(out_file), file_path_sans_ext(basename(out_file)))
 }
+
+polygonize <- function(x) {
+    x <- mask(x, get_country_poly())
+    rasterToPolygons(x)
+}

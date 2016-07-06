@@ -14,7 +14,7 @@ get_forest_areas <- function(iso3='TZA') {
     } else {
         gfc_extract <- stack(out_file)
     }
-    threshold <- 30 # threshold to be considered forest, in percent
+    threshold <- 50 # threshold to be considered forest, in percent
     # DEBUG ONLY
     #gfc_extract <- crop(gfc_extract, readOGR(file.path(data_base, 'AGRA'), 'test_area'))
     # /DEBUG ONLY
@@ -31,9 +31,9 @@ get_forest_areas <- function(iso3='TZA') {
             ux <- unique(f2015)
             ux[which.max(tabulate(match(f2015, ux)))]
         })
-    forest_2015_10km_poly <- rasterToPolygons(forest_2015_10km)
-    writeOGR(forest_2015_10km_poly, 'AGRA_forest_2015_10km.kml', 'layer', 
-             driver='KML', overwrite=TRUE)
+    forest_2015_10km_poly <- polygonize(forest_2015_10km)
+    writeOGR(forest_2015_10km_poly, paste0('AGRA_forest_2015_10km_', threshold, 'pct.kml'),
+             'forest', driver='KML', overwrite=TRUE)
 
     return(forest_2015_10km)
 }
@@ -48,7 +48,7 @@ excluded_areas <- function(iso3='TZA') {
     wdpa <- gUnaryUnion(wdpa)
     wdpa_ok <- rasterize(wdpa, base, 0, background=1)
 
-    wdpa_ok_poly <- rasterToPolygons(wdpa_ok)
+    wdpa_ok_poly <- polygonize(wdpa_ok)
     writeOGR(wdpa_ok_poly, 'AGRA_TZA_wdpa_ok.kml', 'wdpa_ok', driver='KML', 
              overwrite=TRUE)
 
