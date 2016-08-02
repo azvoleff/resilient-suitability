@@ -218,7 +218,7 @@ access_weights <- function(iso3='TZA') {
 ###############################################################################
 ### Pick variables
 
-dhs_api_key <- Sys.getev('dhs_api_key')
+dhs_api_key <- Sys.getenv('dhs_api_key')
 indicator_list <- fromJSON(paste0('http://api.dhsprogram.com/rest/dhs/indicators?APIkey=', dhs_api_key, '?returnFields=IndicatorId,Label,Definition'))
 # Unlist the JSON file entries
 indicator_list <- lapply(indicator_list$Data, function(x) {unlist(x)})
