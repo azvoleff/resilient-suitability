@@ -5,6 +5,8 @@ library(raster)
 library(gdalUtils)
 library(rgdal)
 library(tools)
+library(dplyr)
+library(tidyr)
 library(gfcanalysis)
 
 #data_base <- 'H:/Data'
