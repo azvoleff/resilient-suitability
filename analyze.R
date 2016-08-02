@@ -17,12 +17,12 @@ res_degrees <- .08333333
 clipsrc <- file.path(data_base, 'Global', 'GADM', 'TZA_adm0.shp')
 
 # Function of population, road access
-get_country_poly <- function(iso3='TZA') {
-    # TODO: Code to pull proper country based on iso3='TZA', hardcoded now for speed
+get_country_poly <- function() {
+    # TODO: Code to pull proper country based on iso3, hardcoded now for speed
     readOGR(file.path(data_base, 'Global', 'GADM'), 'TZA_adm0')
 }
 
-setup_base_layer <- function(iso3='TZA') {
+setup_base_layer <- function() {
     # TODO: Automatically generate base layer as a 10x10km grid (in WGS84, so 
     # actually in degrees...) covering the target country
     r <- raster(file.path(data_base, 'HarvestChoice', 'res02_csa22020i_maiz150b_yld.tif'))
@@ -63,49 +63,22 @@ polygonize <- function(x) {
     rasterToPolygons(x)
 }
 
-save_raster(x, name) {
-    writeRaster(v, filename=paste0(x, '.tif'), overwrite=TRUE)
-    v <- polygonize(x)
-    writeOGR(v, paste0(x, '.kml'), 'layer', driver='KML', overwrite=TRUE)
+save_raster <- function(x, name) {
+    x <- mask(x, get_country_poly())
+    writeRaster(x, filename=paste0(name, '.tif'), overwrite=TRUE)
+    v <- rasterToPolygons(x)
+    writeOGR(v, paste0(name, '.kml'), 'layer', driver='KML', overwrite=TRUE)
 }
 
 ################################################################################
-# Make initial map
+# Make initial map, and exclude areas where yield declines are expected
 ################################################################################
 
 # Identify possible areas for intensification
 #
 # Considers projected changes in agro-climatic suitability and current (year 
 # 2000) yield gaps.
-possible_maize_areas <- function(iso3='TZA') {
-    ##########################################################################
-    ### Find areas where yields should increase or stay stable with clim chg
-
-    # Load current and future agro-climatic yield
-    # TODO: need to use median of all climate model outputs
-    
-    # This is agroc-climatically attainable yield for intermediate input level 
-    # rain-fed maize for future period 2050s from Hadley CM3 B2 scenario
-    acy_fut <- raster(file.path(data_base, 'HarvestChoice', 'res02_h3a22020i_maiz150b_yld.tif'))
-    acy_fut <- setup_raster_layer(acy_fut)
-    acy_cur <- raster(file.path(data_base, 'HarvestChoice', 'res02_crav6190i_maiz150b_yld.tif'))
-    acy_cur <- setup_raster_layer(acy_cur)
-
-    acy_diff <- ((acy_fut - acy_cur) / acy_cur) * 100
-    acy_diff_poly <- polygonize(acy_diff)
-    # Save difference in agro-climatic yield with climate change for use in 
-    # plots.
-    writeOGR(acy_diff_poly, 'AGRA_TZA_acy_diff.kml', 'acy_diff', driver='KML', 
-             overwrite=TRUE)
-
-    # Calculate difference in agro-climatic yield with climate change, and mask 
-    # out areas that will see a decline in agro-climatic yield
-    acy_exclude <- acy_diff >= -5
-
-    acy_exclude_poly <- polygonize(acy_exclude)
-    writeOGR(acy_exclude_poly, 'AGRA_TZA_acy_exclude.kml', 'acy_exclude', 
-             driver='KML', overwrite=TRUE)
-
+calc_yield_gap <- function() {
     ##########################################################################
     ### Find areas where large yield gap exists
 
@@ -119,37 +92,42 @@ possible_maize_areas <- function(iso3='TZA') {
                                   'gap2000_r_mze_2000_qga.tif'))
     ygap_diff <- setup_raster_layer(ygap_diff)
 
-    ygap_diff_poly <- polygonize(ygap_diff)
-    writeOGR(ygap_diff_poly, 'AGRA_TZA_ygap_diff.kml', 'ygap_diff', 
-             driver='KML', overwrite=TRUE)
+    save_raster(ygap_diff, 'AGRA_TZA_ygap_diff')
 
     # Normalize by largest gap
-    ygap_diff_norm <- ygap_diff / cellStats(ygap_diff, 'max')
-
-    ##########################################################################
-    ### TODO: Exclude degraded areas
-
-    return(ygap_diff * acy_exclude)
+    #ygap_diff_norm <- ygap_diff / cellStats(ygap_diff, 'max')
+    return(ygap_diff)
 }
 
-poss <- possible_maize_areas()
-poss_poly <- polygonize(poss)
-writeOGR(poss_poly, 'AGRA_TZA_poss_areas.kml', 'AGRA_TZA_poss_areas', 
-         driver='KML', overwrite=TRUE)
+##########################################################################
+# Account for future changes in agro-climatic potential yield
+# TODO: need to use median of all climate model outputs
+calc_acy_cc_diff_pct <- function() {
+    # This is agroc-climatically attainable yield for intermediate input level 
+    # rain-fed maize for future period 2050s from Hadley CM3 B2 scenario
+    acy_fut <- raster(file.path(data_base, 'HarvestChoice', 'res02_h3a22020i_maiz150b_yld.tif'))
+    acy_fut <- setup_raster_layer(acy_fut)
+    acy_cur <- raster(file.path(data_base, 'HarvestChoice', 'res02_crav6190i_maiz150b_yld.tif'))
+    acy_cur <- setup_raster_layer(acy_cur)
 
-################################################################################
-# Exclude areas where yield declines are expected
-################################################################################
+    # Calculate difference in agro-climatic yield with climate change as a 
+    # percentage of current agroclimatic yield, and mask out 
+    acy_diff <- ((acy_fut - acy_cur) / acy_cur) * 100
+    save_raster(acy_diff, 'AGRA_TZA_acy_diff')
+
+    return(acy_diff)
+}
+
+##########################################################################
+### TODO: Exclude degraded areas
 
 ################################################################################
 # Exclude areas supporting natural capital
 ################################################################################
 
-# Preserve lands that provide key ecosystem services
-#
-# Exclude areas from consideration based on WDPA, Forest Cover (Hansen et al.  
-# 2013) and freshwater availability from WaterWorld.
-get_forest_areas <- function(iso3='TZA') {
+# Exclude areas from consideration based on Forest Cover (Hansen et al.  2013)
+calc_forest_areas <- function(threshold=50) {
+    # Forest Cover Hansen et al. (2013)
     out_file <- file.path(data_base, 'AGRA/gfc_extract.tif')
     output_folder <- file.path(data_base, 'GFC_Product')
     if (!file_test('-f', out_file)) {
@@ -161,12 +139,11 @@ get_forest_areas <- function(iso3='TZA') {
     } else {
         gfc_extract <- stack(out_file)
     }
-    threshold <- 50 # threshold to be considered forest, in percent
     # DEBUG ONLY
     #gfc_extract <- crop(gfc_extract, readOGR(file.path(data_base, 'AGRA'), 'test_area'))
     # /DEBUG ONLY
     
-    forest_2015_10km <- aggregate(subset(gfc_extract, c(1, 4)),
+    forest_2015 <- aggregate(subset(gfc_extract, c(1, 4)),
         fact=c(round(res(base)/res(gfc_extract)), 2),
         expand=FALSE,
         function(x, na.rm) {
@@ -178,42 +155,31 @@ get_forest_areas <- function(iso3='TZA') {
             ux <- unique(f2015)
             ux[which.max(tabulate(match(f2015, ux)))]
         })
-    forest_2015_10km_poly <- polygonize(forest_2015_10km)
-    writeOGR(forest_2015_10km_poly, paste0('AGRA_forest_2015_10km_', threshold, 'pct.kml'),
-             'forest', driver='KML', overwrite=TRUE)
-
-    return(forest_2015_10km)
+    save_raster(forest_2015, paste0('AGRA_forest_2015_', threshold))
+    return(forest_2015)
 }
 
-excluded_areas <- function(iso3='TZA') {
-    forests <- get_forest_areas()
-    
-    ##########################################################################
-    ### Protected areas
+fc_50 <- calc_forest_areas(30)
+fc_50 <- calc_forest_areas(50)
+
+# Exclude protected areas from consideration
+calc_prot_areas <- function() {
     dataset <- file.path(data_base, "WDPA/WDPA_June2016/WDPA_June2016-shapefile-polygons.shp")
     wdpa <- setup_vector_layer(dataset)
     wdpa <- gUnaryUnion(wdpa)
     wdpa_ok <- rasterize(wdpa, base, 0, background=1)
-
-    wdpa_ok_poly <- polygonize(wdpa_ok)
-    writeOGR(wdpa_ok_poly, 'AGRA_TZA_wdpa_ok.kml', 'wdpa_ok', driver='KML', 
-             overwrite=TRUE)
-
-    ##########################################################################
-    ### Forests
-
-    ##########################################################################
-    ### Water
+    save_raster(wdpa_ok, 'AGRA_TZA_wdpa_ok')
+    return(wdpa_ok)
 }
 
-poss <- poss * excluded_areas()
+# TODO: exclude areas important for freshwater availability from WaterWorld
 
 ################################################################################
 # Weight by population and access
 ################################################################################
 
 # Weight areas based on their market access
-access_weights <- function(iso3='TZA') {
+access_weights <- function() {
     in_database <- file.path(data_base, 'GROADS', 'gROADS_v1.gdb')
     # TODO: Need to buffer the spat to account for roads that may fall 
     # outside national border but still be closs enough to affect access.
@@ -368,3 +334,13 @@ writeOGR(dhs_regions, 'AGRA_TZA_DHS_indicators.geojson',
 # Weight by exposure to market price shocks
 ################################################################################
 
+################################################################################
+# Perform final overlay
+################################################################################
+
+yield_gap <- calc_yield_gap()
+acy_cc_diff_pct <- calc_acy_cc_diff_pct()
+
+# Calculate difference in agro-climatic yield with climate change, and mask out 
+# areas that will see a decline in agro-climatic yield
+acy_exclude <- acy_diff >= -5
