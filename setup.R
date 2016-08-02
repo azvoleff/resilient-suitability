@@ -6,6 +6,7 @@ library(gdalUtils)
 library(rgdal)
 library(tools)
 library(dplyr)
+library(RJSONIO)
 library(tidyr)
 library(gfcanalysis)
 
