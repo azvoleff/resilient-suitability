@@ -13,9 +13,14 @@ norm_layer <- function(x) {
 }
 
 yield_gap <- norm_layer(raster('AGRA_TZA_ygap_diff.tif'))
+yield_diff_cc <- norm_layer(raster('AGRA_TZA_acy_diff.tif'))
 
 pop_density <- norm_layer(raster('AGRA_TZA_pop_density.tif'))
 road_density <- norm_layer(raster('AGRA_TZA_groads_density.tif'))
+
+stunting <- norm_layer(raster('AGRA_TZA_DHS_stunting.kml'))
+underweight <- norm_layer(raster('AGRA_TZA_DHS_underweight.kml'))
+wasted <- norm_layer(raster('AGRA_TZA_DHS_wasted.kml'))
 
 # Calculate difference in agro-climatic yield with climate change, and mask out 
 # areas that will see a decline in agro-climatic yield

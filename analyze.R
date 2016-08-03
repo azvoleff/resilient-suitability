@@ -111,7 +111,7 @@ calc_acy_cc_diff_pct <- function() {
     acy_cur <- setup_raster_layer(acy_cur)
 
     # Calculate difference in agro-climatic yield with climate change as a 
-    # percentage of current agroclimatic yield, and mask out 
+    # percentage of current agroclimatic yield
     acy_diff <- ((acy_fut - acy_cur) / acy_cur) * 100
     save_raster(acy_diff, 'AGRA_TZA_acy_diff')
 
@@ -178,8 +178,7 @@ calc_prot_areas <- function() {
 # Weight by population and access
 ################################################################################
 
-# Weight areas based on their market access
-calc_access_weights <- function() {
+calc_road_density <- function() {
     in_database <- file.path(data_base, 'GROADS', 'gROADS_v1.gdb')
     # TODO: Need to buffer the spat to account for roads that may fall 
     # outside national border but still be closs enough to affect access.
@@ -210,7 +209,7 @@ calc_access_weights <- function() {
     rs <- raster(road_dens_base)
     rs[] <- 1:ncell(rs)
     rsp <- rasterToPolygons(rs)
-    rp <- intersect(roads, rsp)
+    rp <- raster::intersect(roads, rsp)
     rp$length <- gLength(rp, byid=TRUE) / 1000
     x <- tapply(rp$length, rp$layer, sum)
     r <- raster(rs)
@@ -219,7 +218,10 @@ calc_access_weights <- function() {
 
     road_density <- projectRaster(r, crs=proj4string(base))
     save_raster(road_density, 'AGRA_TZA_groads_density')
+    return(road_density)
+}
 
+calc_pop_density <- function() {
     # Compute population density per grid square
     pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
     pop <- crop(pop, get_country_poly())
@@ -230,6 +232,7 @@ calc_access_weights <- function() {
     # Convert to pop/km^2
     pop <- pop/(10*10)
     save_raster(pop, 'AGRA_TZA_pop_density')
+    return(pop)
 }
 
 ################################################################################
