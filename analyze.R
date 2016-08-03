@@ -159,8 +159,8 @@ calc_forest_areas <- function(threshold=50) {
     return(forest_2015)
 }
 
-fc_50 <- calc_forest_areas(30)
-fc_50 <- calc_forest_areas(50)
+# fc_30 <- calc_forest_areas(30)
+# fc_50 <- calc_forest_areas(50)
 
 # Exclude protected areas from consideration
 calc_prot_areas <- function() {
@@ -179,7 +179,7 @@ calc_prot_areas <- function() {
 ################################################################################
 
 # Weight areas based on their market access
-access_weights <- function() {
+calc_access_weights <- function() {
     in_database <- file.path(data_base, 'GROADS', 'gROADS_v1.gdb')
     # TODO: Need to buffer the spat to account for roads that may fall 
     # outside national border but still be closs enough to affect access.
@@ -218,9 +218,7 @@ access_weights <- function() {
     # Density is in km/km^2
 
     road_density <- projectRaster(r, crs=proj4string(base))
-    road_density_poly <- polygonize(road_density)
-    writeOGR(road_density_poly, 'AGRA_TZA_groads_density.kml', 'groads', driver='KML', 
-             overwrite=TRUE)
+    save_raster(road_density, 'AGRA_TZA_groads_density')
 
     # Compute population density per grid square
     pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
@@ -231,116 +229,99 @@ access_weights <- function() {
                      fun=sum)
     # Convert to pop/km^2
     pop <- pop/(10*10)
-    pop_poly <- polygonize(pop)
-    writeOGR(pop_poly, 'AGRA_TZA_pop_density.kml', 'pop', driver='KML', 
-             overwrite=TRUE)
+    save_raster(pop, 'AGRA_TZA_pop_density')
 }
-
-
 
 ################################################################################
 # Weight by food security related health stress
 ################################################################################
 
-# First go:
-# potential <- mask(poss, get_country_poly())
-# potential <- potential/cellStats(potential, 'max')
-#
-# potential_poly <- rasterToPolygons(poss)
-# writeOGR(potential_poly, 'AGRA_TZA_output.kml', 'layer', driver='KML', 
-#          overwrite=TRUE)
-
-
-
 ###############################################################################
 ### Pick variables
 
-dhs_api_key <- Sys.getenv('dhs_api_key')
-indicator_list <- fromJSON(paste0('http://api.dhsprogram.com/rest/dhs/indicators?APIkey=', dhs_api_key, '?returnFields=IndicatorId,Label,Definition'))
-# Unlist the JSON file entries
-indicator_list <- lapply(indicator_list$Data, function(x) {unlist(x)})
-# Convert JSON input to a data frame
-indicator_list <- as.data.frame(do.call("rbind", indicator_list), stringsAsFactors=FALSE)
+calc_dhs_weights <- function() {
+    dhs_api_key <- Sys.getenv('dhs_api_key')
+    indicator_list <- fromJSON(paste0('http://api.dhsprogram.com/rest/dhs/indicators?APIkey=',
+                                      dhs_api_key, '?returnFields=IndicatorId,Label,Definition'))
+    # Unlist the JSON file entries
+    indicator_list <- lapply(indicator_list$Data, function(x) {unlist(x)})
+    # Convert JSON input to a data frame
+    indicator_list <- as.data.frame(do.call("rbind", indicator_list), stringsAsFactors=FALSE)
 
-grep_list <- function(x) {
-    def_rows <- grepl(tolower(x), tolower(indicator_list$Label))
-    label_rows <- grepl(tolower(x), tolower(indicator_list$Definition))
-    return(indicator_list[(def_rows | label_rows), 1:3])
-}
-
-###############################################################################
-###  Build indicator
-
-get_indic <- function(indicatorIDs, countryIds) {
-    # Note DHS uses "NI" for Niger instead of the correct, "NE")
-    indicators_string <- paste0("indicatorIds=", paste(indicatorIDs, collapse=","))
-    countryIds_string <- paste0("countryIds=", paste(countryIds, collapse=","))
-    api_base <- "http://api.dhsprogram.com/rest/dhs/data?breakdown=subnational&APIkey=CVINTL-877527&perpage=5000"
-    api_call <- paste(api_base, indicators_string, countryIds_string, "f=json", sep='&')
-    # Make repeated calls to retrieve all records as there is a 5000 record 
-    # limit per request
-    nrecs <- 5000
-    i <- 1
-    while (nrecs == 5000) {
-        this_call <- paste0(api_call, '&page=', i)
-        json_file <- fromJSON(this_call)
-        # Unlist the JSON file entries
-        this_d <- lapply(json_file$Data, function(x) {unlist(x)})
-        # Convert JSON input to a data frame
-        this_d <- as.data.frame(do.call("rbind", this_d), stringsAsFactors=FALSE)
-        if (i == 1) d <- this_d
-        else d <- rbind(d, this_d)
-        nrecs <- nrow(this_d)
-        i <-  i + 1
+    grep_list <- function(x) {
+        def_rows <- grepl(tolower(x), tolower(indicator_list$Label))
+        label_rows <- grepl(tolower(x), tolower(indicator_list$Definition))
+        return(indicator_list[(def_rows | label_rows), 1:3])
     }
-    d <- tbl_df(d)
+
+    get_indic <- function(indicatorIDs, countryIds) {
+        # Note DHS uses "NI" for Niger instead of the correct, "NE")
+        indicators_string <- paste0("indicatorIds=", paste(indicatorIDs, collapse=","))
+        countryIds_string <- paste0("countryIds=", paste(countryIds, collapse=","))
+        api_base <- "http://api.dhsprogram.com/rest/dhs/data?breakdown=subnational&APIkey=CVINTL-877527&perpage=5000"
+        api_call <- paste(api_base, indicators_string, countryIds_string, "f=json", sep='&')
+        # Make repeated calls to retrieve all records as there is a 5000 record 
+        # limit per request
+        nrecs <- 5000
+        i <- 1
+        while (nrecs == 5000) {
+            this_call <- paste0(api_call, '&page=', i)
+            json_file <- fromJSON(this_call)
+            # Unlist the JSON file entries
+            this_d <- lapply(json_file$Data, function(x) {unlist(x)})
+            # Convert JSON input to a data frame
+            this_d <- as.data.frame(do.call("rbind", this_d), stringsAsFactors=FALSE)
+            if (i == 1) d <- this_d
+            else d <- rbind(d, this_d)
+            nrecs <- nrow(this_d)
+            i <-  i + 1
+        }
+        d <- tbl_df(d)
+    }
+
+    vars <- c('CN_NUTS_C_HA2', # percent children stunted
+              'CN_NUTS_C_WA2', # percent children underweight
+              'CN_NUTS_C_WH2') # percent children wasted
+
+    dhs_vars <- get_indic(vars, countryIds='TZ')
+
+    dhs_vars$SurveyYear <- as.numeric(dhs_vars$SurveyYear)
+    dhs_vars$Value <- as.numeric(dhs_vars$Value)
+
+    names(dhs_vars)[names(dhs_vars) == "RegionId"] <- 'REG_ID'
+
+    # Filter to only include most recent data
+    dhs_vars <- dhs_vars[dhs_vars$SurveyYear == max(dhs_vars$SurveyYear), ]
+
+    #ggplot(dhs_vars) + geom_point(aes(Indicator, Value))
+
+    # Join Tanzania polygons
+    dhs_regions_database <- file.path(data_base, 'DHS', 'DHS_Regions', 'DHS_Regions_SDR.gdb')
+    out_file <- tempfile(fileext='.shp')
+    ogr2ogr(dhs_regions_database, out_file, clipsrcsql="select * from DHS_Regions_SDR where ISO='TZ'")
+    dhs_regions <- readOGR(dirname(out_file), file_path_sans_ext(basename(out_file)))
+    dhs_regions <- dhs_regions[dhs_regions$ISO == 'TZ', ]
+
+    dhs_regions <- dhs_regions[dhs_regions$REG_ID %in% dhs_vars$REG_ID, ]
+
+    dhs_vars <- spread(select(dhs_vars, Indicator, Value, REG_ID), Indicator, Value)
+
+    dhs_regions@data <- left_join(dhs_regions@data, dhs_vars)
+
+    writeOGR(dhs_regions, 'AGRA_TZA_DHS_indicators.geojson', 
+             'AGRA_TZA_DHS_indicators', driver='GeoJSON')
+
+    # Make rasters of each dhs layer
+    stunted <- rasterize(dhs_regions, base, "Children stunted", background=NA)
+    save_raster(stunted, 'AGRA_TZA_DHS_stunted')
+    wasted <- rasterize(dhs_regions, base, "Children wasted", background=NA)
+    save_raster(wasted, 'AGRA_TZA_DHS_wasted')
+    underweight <- rasterize(dhs_regions, base, "Children underweight", background=NA)
+    save_raster(underweight, 'AGRA_TZA_DHS_underweight')
+
+    return(stack(stunted, wasted, underweight))
 }
-
-vars <- c('CN_NUTS_C_HA2', # percent children stunted
-          'CN_NUTS_C_WA2', # percent children underweight
-          'CN_NUTS_C_WH2') # percent children wasted
-
-dhs_vars <- get_indic(vars, countryIds='TZ')
-
-unique(dhs_vars$Indicator)
-
-dhs_vars$SurveyYear <- as.numeric(dhs_vars$SurveyYear)
-dhs_vars$Value <- as.numeric(dhs_vars$Value)
-
-names(dhs_vars)[names(dhs_vars) == "RegionId"] <- 'REG_ID'
-
-# Filter to only include most recent data
-dhs_vars <- dhs_vars[dhs_vars$SurveyYear == max(dhs_vars$SurveyYear), ]
-
-#ggplot(dhs_vars) + geom_point(aes(Indicator, Value))
-
-# TODO: now join Tanzania polygons
-dhs_regions_database <- file.path(data_base, 'DHS', 'DHS_Regions', 'DHS_Regions_SDR.gdb')
-out_file <- tempfile(fileext='.shp')
-ogr2ogr(dhs_regions_database, out_file, clipsrcsql="select * from DHS_Regions_SDR where ISO='TZ'")
-dhs_regions <- readOGR(dirname(out_file), file_path_sans_ext(basename(out_file)))
-dhs_regions <- dhs_regions[dhs_regions$ISO == 'TZ', ]
-
-dhs_regions <- dhs_regions[dhs_regions$REG_ID %in% dhs_vars$REG_ID, ]
-
-dhs_vars <- spread(select(dhs_vars, Indicator, Value, REG_ID), Indicator, Value)
-
-dhs_regions@data <- left_join(dhs_regions@data, dhs_vars)
-
-writeOGR(dhs_regions, 'AGRA_TZA_DHS_indicators.geojson', 
-         'AGRA_TZA_DHS_indicators', driver='GeoJSON')
 
 ################################################################################
 # Weight by exposure to market price shocks
 ################################################################################
-
-################################################################################
-# Perform final overlay
-################################################################################
-
-yield_gap <- calc_yield_gap()
-acy_cc_diff_pct <- calc_acy_cc_diff_pct()
-
-# Calculate difference in agro-climatic yield with climate change, and mask out 
-# areas that will see a decline in agro-climatic yield
-acy_exclude <- acy_diff >= -5
