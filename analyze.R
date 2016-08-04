@@ -31,6 +31,7 @@ setup_base_layer <- function() {
 base <- setup_base_layer()
 
 setup_raster_layer <- function(x, method='ngb') {
+    names(x) <- NULL
     if (!compareCRS(x, base)) {
         x <- projectRaster(x, crs=proj4string(base), method=method)
     }
@@ -64,6 +65,7 @@ polygonize <- function(x) {
 }
 
 save_raster <- function(x, name) {
+    names(x) <- NULL
     x <- mask(x, get_country_poly())
     writeRaster(x, filename=paste0(name, '.tif'), overwrite=TRUE)
     v <- rasterToPolygons(x)
