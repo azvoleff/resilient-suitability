@@ -156,6 +156,7 @@ calc_forest_areas <- function(threshold=50) {
             ux <- unique(f2015)
             ux[which.max(tabulate(match(f2015, ux)))]
         })
+    forest_2015 <- setup_raster_layer(forest_2015)
     save_raster(forest_2015, paste0('AGRA_forest_2015_', threshold))
     return(forest_2015)
 }
@@ -218,7 +219,7 @@ calc_road_density <- function() {
     # Density is in km/km^2
 
     road_density <- projectRaster(r, crs=proj4string(base))
-    setup_raster_layer(road_density)
+    road_density <- setup_raster_layer(road_density)
     save_raster(road_density, 'AGRA_TZA_groads_density')
     return(road_density)
 }
@@ -227,6 +228,7 @@ calc_pop_density <- function() {
     # Compute population density per grid square
     pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
     pop <- crop(pop, get_country_poly())
+    pop <- setup_raster_layer(pop)
     writeRaster(pop, 'AGRA_TZA_pop_density_original.tif', overwrite=TRUE)
 
     pop <- aggregate(pop, fact=c(round(res(base)/res(pop))), expand=FALSE, 
