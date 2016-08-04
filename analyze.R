@@ -34,7 +34,7 @@ setup_raster_layer <- function(x, method='ngb') {
     if (!compareCRS(x, base)) {
         x <- projectRaster(x, crs=proj4string(base), method=method)
     }
-    if ((xres(base)) > xres(x) | (yres(x) > yres(base))) {
+    if (!identical(round(res(base)/res(x)), c(1, 1)) & ((xres(base) > xres(x)) | (yres(x) > yres(base)))) {
         if (method == 'ngb') {
             # Aggregate x to the same resolution as base using mode if categorical data
             x <- aggregate(x, round(res(base)/res(x)),
@@ -143,6 +143,7 @@ calc_forest_areas <- function(threshold=50) {
     #gfc_extract <- crop(gfc_extract, readOGR(file.path(data_base, 'AGRA'), 'test_area'))
     # /DEBUG ONLY
     
+    #TODO: this should be a percent cover rather than a max
     forest_2015 <- aggregate(subset(gfc_extract, c(1, 4)),
         fact=c(round(res(base)/res(gfc_extract)), 2),
         expand=FALSE,
@@ -217,6 +218,7 @@ calc_road_density <- function() {
     # Density is in km/km^2
 
     road_density <- projectRaster(r, crs=proj4string(base))
+    setup_raster_layer(road_density)
     save_raster(road_density, 'AGRA_TZA_groads_density')
     return(road_density)
 }
