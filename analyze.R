@@ -167,9 +167,9 @@ calc_prot_areas <- function() {
     dataset <- file.path(data_base, "WDPA/WDPA_June2016/WDPA_June2016-shapefile-polygons.shp")
     wdpa <- setup_vector_layer(dataset)
     wdpa <- gUnaryUnion(wdpa)
-    wdpa_ok <- rasterize(wdpa, base, 0, background=1)
-    save_raster(wdpa_ok, 'AGRA_TZA_wdpa_ok')
-    return(wdpa_ok)
+    wdpa <- rasterize(wdpa, base, 1, background=0)
+    save_raster(wdpa, 'AGRA_TZA_wdpa')
+    return(wdpa)
 }
 
 # TODO: exclude areas important for freshwater availability from WaterWorld
