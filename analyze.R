@@ -112,6 +112,9 @@ calc_acy_cc_diff_pct <- function() {
     acy_cur <- raster(file.path(data_base, 'HarvestChoice', 'res02_crav6190i_maiz150b_yld.tif'))
     acy_cur <- setup_raster_layer(acy_cur)
 
+    save_raster(acy_cur, 'AGRA_TZA_acy_cur')
+    save_raster(acy_fut, 'AGRA_TZA_acy_fut')
+
     # Calculate difference in agro-climatic yield with climate change as a 
     # percentage of current agroclimatic yield
     acy_diff <- ((acy_fut - acy_cur) / acy_cur) * 100
