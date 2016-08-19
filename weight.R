@@ -163,71 +163,72 @@ plot_areas <- function(m, n) {
     return(r)
 }
 
-plot_results <- function(name, m) {
-    ###########################################################################
-    # Quantile based plots
-    d_quantile <- foreach(q=c(.95, .9, .75), .combine=rbind) %do% {
-        threshold <- quantile(m, q)
-        p <- cellStats(yg * (m > threshold), 'sum')
-        return(data.frame(q=q, p=p, threshold=threshold))
-    }
-    d_quantile$label <- paste0((1 - d_quantile$q)*100, '%')
-    d_quantile$label <- ordered(d_quantile$label, levels=c('5%', '10%', '25%'))
-    # Make maps showing the areas chosen for intensification
-    quantile_maps <- lapply(d_quantile$threshold, function(n) plot_areas(m, n))
+names <- c('Model 0', 'Model 1', 'Model 2', 'Model 3 (p1r1h1)',
+           'Model 3 (p0r0h1)', 'Model 3 (p1r1h0)')
+models <- c(m0, m1, m2, m3_p1r1h1, m3_p0r0h1, m3_p1r1h0)
 
-    main <- ggplot(d_quantile) + geom_bar(aes(label, p/1000), stat='identity') +
-        xlab('Percentage of area intensified') +
-        ylab('Potential production\nincrease (1000s of tons)') +
-        ggtitle(name) +
-        theme_bw(base_size=8) +
-        theme(panel.grid.major.x=element_blank(),
-              panel.grid.minor.x=element_blank(),
-              axis.ticks.x=element_blank())
-    p <- grid.arrange(grobs=c(list(main), quantile_maps), layout_matrix=rbind(c(1,1,1), c(2, 3, 4)))
-    ggsave(p, filename=paste0(name, '_quantiles.png'), width=6, height=4, dpi=300)
-
-    ###########################################################################
-    # Area-based plots - remember SAGCOT target is 350,000 ha
-    d_area <- foreach(n=c(3.5e5, 1e6, 5e6), .combine=rbind) %do% {
+###############################################################################
+### Make plots of intensification areas
+p_by_area <- foreach(m=models, model=names, .combine=rbind) %do% {
+    d <- foreach(n=c(3.5e5, 1e6, 5e6), .combine=rbind) %do% {
         threshold <- cum_ha_cutoff(m, yg, n)
+        # area here is the area intensified
         return(data.frame(area=n,
                           p=cellStats(yg * (m >= threshold), 'sum'), 
                           threshold=threshold))
     }
-    d_area$label <- paste0(prettyNum(d_area$area, big.mark=',', scientific=FALSE), ' ha')
-    d_area$label <- ordered(d_area$label, levels=d_area$label[order(d_area$area)])
-    # Make maps showing the areas chosen for intensification
-    area_maps <- lapply(d_area$threshold, function(n) plot_areas(m, n))
+    d$label <- paste0(prettyNum(d$area, big.mark=',', scientific=FALSE), ' ha')
+    d$label <- ordered(d$label, levels=d$label[order(d$area)])
+    d$model <- model
+    d
+}
 
-    main <- ggplot(d_area) + geom_bar(aes(label, p/1000), stat='identity') +
+plot_area_intensified <- function(d, name, m) {
+    d <- filter(d, model == name)
+    # Make maps showing the areas chosen for intensification
+    area_maps <- lapply(d$threshold, function(n) plot_areas(m, n))
+    main <- ggplot(d) + geom_bar(aes(label, p/1000), stat='identity') +
         xlab('Area intensified') +
         ylab('Total increase in production\n(1000s of tons)') +
-        ggtitle(name) +
+        #ggtitle(name) +
         theme_bw(base_size=8) +
         theme(panel.grid.major.x=element_blank(),
               panel.grid.minor.x=element_blank(),
               axis.ticks.x=element_blank())
     p <- grid.arrange(grobs=c(list(main), area_maps), layout_matrix=rbind(c(1,1,1), c(2, 3, 4)))
     ggsave(p, filename=paste0(name, '_byarea.png'), width=6, height=4, dpi=300)
+}
 
-    # # Average total potential prod increase in tons / ha. Note that yield gap 
-    # # is in 1000s of tons, so need to convert to tons
-    # mean((yg*1000/pixel_areas_ha)[m >= r])
+# Now plot each model
+foreach(m=models, name=names, .combine=rbind) %do% {
+    plot_area_intensified(p_by_area, name, m)
+}
 
-    ###########################################################################
-    # Regional plots, based on expansion to a land area equal to the largest 
-    # area set above for area-based plots.
-    yg_masked <- mask(yg, m > d_area$threshold[nrow(d_area)], maskvalue=FALSE)
-    yg_per_ha_masked <- mask(yg_per_ha, m > d_area$threshold[nrow(d_area)], maskvalue=FALSE)
-    prod_byreg <- data.frame(Name=regions$NAME_1,
-                             # Make output units be 1000s of tons
-                             prod_k_tons=raster::extract(yg_masked/1000, regions, fun=sum, na.rm=TRUE),
-                             # Make output units be tons / ha
-                             prod_ton_ha=raster::extract(yg_per_ha_masked, regions, fun=mean, na.rm=TRUE))
+###############################################################################
+### Make plots of intensified yields by region based on expansion to a land 
+### area equal to the largest area set above for the intensification area
+### plots.
+mask_yield <- function(y, m, threshold) {
+    y[m < threshold] <- NA
+    y[is.na(m)] <- NA
+    return(y)
+}
 
-    p <- ggplot(prod_byreg) +
-        geom_bar(aes(factor(Name, levels=Name[order(prod_k_tons, decreasing=TRUE)]), prod_k_tons), stat='identity') +
+p_by_region <- foreach(m=models, name=names, .combine=rbind) %do% {
+    threshold <- filter(p_by_area, model == name, area == max(area))$threshold
+    yg_masked <- mask_yield(yg, m, threshold)
+    yg_per_ha_masked <- mask_yield(yg_per_ha, m, threshold)
+    data.frame(model=name,
+               region=regions$NAME_1,
+               # Make output units be 1000s of tons
+               prod_k_tons=raster::extract(yg_masked/1000, regions, fun=sum, na.rm=TRUE),
+               # Make output units be tons / ha
+               prod_ton_ha=raster::extract(yg_per_ha_masked, regions, fun=mean, na.rm=TRUE))
+}
+
+plot_regional_stats <- function(d, name, m) {
+    p <- ggplot(d) +
+        geom_bar(aes(factor(region, levels=region[order(prod_k_tons, decreasing=TRUE)]), prod_k_tons), stat='identity') +
         ylab('Total increase in production\n(1000s of tons)') +
         theme_bw(base_size=8) +
         theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
@@ -237,8 +238,8 @@ plot_results <- function(name, m) {
               axis.title.x=element_blank())
     ggsave(p, filename=paste0(name, '_byregion_tons.png'), width=6, height=4, dpi=300)
 
-    p <- ggplot(prod_byreg) +
-        geom_bar(aes(factor(Name, levels=Name[order(prod_ton_ha, decreasing=TRUE)]), prod_ton_ha), stat='identity') +
+    p <- ggplot(d) +
+        geom_bar(aes(factor(region, levels=region[order(prod_ton_ha, decreasing=TRUE)]), prod_ton_ha), stat='identity') +
         ylab('Average potential increase in production\n(tons / hectare)') +
         theme_bw(base_size=8) +
         theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
@@ -250,9 +251,42 @@ plot_results <- function(name, m) {
 
 }
 
-plot_results('Model 0', m0)
-plot_results('Model 1', m1)
-plot_results('Model 2', m2)
-plot_results('Model 3 (p1r1h1)', m3_p1r1h1)
-plot_results('Model 3 (p0r0h1)', m3_p0r0h1)
-plot_results('Model 3 (p1r1h0)', m3_p1r1h0)
+# Now plot each model
+foreach(m=models, name=names, .combine=rbind) %do% {
+    d <- filter(p_by_region, model == name)
+    plot_regional_stats(d, name, m)
+}
+
+###############################################################################
+### Additional presentation plots
+
+p_by_region_agra <- filter(p_by_region,
+                           region %in% agra_regions,
+                           model %in% c('Model 0', 'Model 3 (p1r1h1)'))
+p_by_region_agra$model <- ordered(p_by_region_agra$model,
+                            levels=c('Model 0', 'Model 3 (p1r1h1)'),
+                            labels=c('Standard approach', 'Resilient suitability'))
+
+ggplot(p_by_region_agra) +
+    geom_bar(aes(factor(region, levels=region[order(prod_ton_ha, decreasing=TRUE)]), prod_ton_ha), stat='identity') +
+    facet_grid(model~.) +
+    ylab('Average potential increase in production\n(tons / hectare)') +
+    theme_bw(base_size=8) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+          panel.grid.major.x=element_blank(),
+          panel.grid.minor.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          axis.title.x=element_blank())
+ggsave(filename=paste0('byregion_tonsperha_AGRA_regions.png'), width=6, height=4, dpi=300)
+
+ggplot(p_by_region_agra) +
+    geom_bar(aes(factor(region, levels=region[order(prod_k_tons, decreasing=TRUE)]), prod_k_tons), stat='identity') +
+    facet_grid(model~.) +
+    ylab('Total increase in production\n(1000s of tons)') +
+    theme_bw(base_size=8) +
+    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+          panel.grid.major.x=element_blank(),
+          panel.grid.minor.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          axis.title.x=element_blank())
+ggsave(filename=paste0('byregion_prod_k_tons_AGRA_regions.png'), width=6, height=4, dpi=300)
