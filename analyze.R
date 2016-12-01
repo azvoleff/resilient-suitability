@@ -25,7 +25,7 @@ get_country_poly <- function() {
 setup_base_layer <- function() {
     # TODO: Automatically generate base layer as a 10x10km grid (in WGS84, so 
     # actually in degrees...) covering the target country
-    r <- raster(file.path(data_base, 'HarvestChoice', 'res02_csa22020i_maiz150b_yld.tif'))
+    r <- raster(file.path(data_base, 'GAEZ', 'res02_csa22020i_maiz150b_yld.tif'))
     crop(r, get_country_poly())
 }
 base <- setup_base_layer()
@@ -85,20 +85,63 @@ calc_yield_gap <- function() {
     ### Find areas where large yield gap exists
 
     # Ratio of actual and potential yield for rain-fed maize
-    ygap_ratio <- raster(file.path(data_base, 'HarvestChoice', 
+    ygap_ratio <- raster(file.path(data_base, 'GAEZ', 
                                    'gap2000_r_mze_2000_yga_cl.tif'))
     ygap_ratio <- setup_raster_layer(ygap_ratio)
 
-    # Difference of potential and actual production for rain-fed maize
-    ygap_diff <- raster(file.path(data_base, 'HarvestChoice', 
-                                  'gap2000_r_mze_2000_qga.tif'))
-    ygap_diff <- setup_raster_layer(ygap_diff)
+    # Difference of potential and actual production for rain-fed and irrigated 
+    # maize
+    ygap_ir_diff <- raster(file.path(data_base, 'GAEZ', 
+                                  'gap2000_t_mze_2000_qga.tif'))
+    ygap_ir_diff <- setup_raster_layer(ygap_ir_diff)
+    save_raster(ygap_ir_diff, 'AGRA_TZA_ygap_ir_diff')
 
-    save_raster(ygap_diff, 'AGRA_TZA_ygap_diff')
+    # Difference of potential and actual production for irrigated maize
+    ygap_i_diff <- raster(file.path(data_base, 'GAEZ', 
+                                  'gap2000_i_mze_2000_qga.tif'))
+    ygap_i_diff <- setup_raster_layer(ygap_i_diff)
+    save_raster(ygap_i_diff, 'AGRA_TZA_ygap_i_diff')
+
+    # Difference of potential and actual production for rain-fed maize
+    ygap_r_diff <- raster(file.path(data_base, 'GAEZ', 
+                                  'gap2000_r_mze_2000_qga.tif'))
+    ygap_r_diff <- setup_raster_layer(ygap_r_diff)
+    save_raster(ygap_r_diff, 'AGRA_TZA_ygap_r_diff')
+
+    # Agro-climatically attainable yield for low-input rain-fed maize in kg per 
+    # ha
+    acy_cur_r_l <- raster(file.path(data_base, 'GAEZ',
+                                    'res02_crav6190l_maiz150b_yld.tif'))
+    acy_cur_r_l <- setup_raster_layer(acy_cur_r_l)
+    save_raster(acy_cur_r_l, 'AGRA_TZA_acy_r_l')
+
+    # Agro-climatically attainable yield for high-input rain-fed maize in kg 
+    # per ha
+    acy_cur_r_h <- raster(file.path(data_base, 'GAEZ',
+                                    'res02_crav6190h_maiz150b_yld.tif'))
+    acy_cur_r_h <- setup_raster_layer(acy_cur_r_h)
+    save_raster(acy_cur_r_h, 'AGRA_TZA_acy_r_h')
+
+    # Yield in 2000 of rainfed maize - tons/ha
+    y_cur_r <- raster(file.path(data_base, 'GAEZ',
+                                    'act2000_r_mze_2000_yld.tif'))
+    y_cur_r <- setup_raster_layer(y_cur_r)
+    save_raster(y_cur_r, 'AGRA_TZA_cur_r')
+
+    # Yield in 2000 of irrigated maize - tons/ha
+    y_cur_i <- raster(file.path(data_base, 'GAEZ',
+                                    'act2000_i_mze_2000_yld.tif'))
+    y_cur_i <- setup_raster_layer(y_cur_i)
+    save_raster(y_cur_i, 'AGRA_TZA_cur_i')
+
+    # Yield gap 2000 of irrigated maize - tons/ha
+    y_cur_i <- raster(file.path(data_base, 'GAEZ',
+                                    'act2000_i_mze_2000_yld.tif'))
+    y_cur_i <- setup_raster_layer(y_cur_i)
+    save_raster(y_cur_i, 'AGRA_TZA_cur_i')
 
     # Normalize by largest gap
     #ygap_diff_norm <- ygap_diff / cellStats(ygap_diff, 'max')
-    return(ygap_diff)
 }
 
 ##########################################################################
@@ -107,9 +150,9 @@ calc_yield_gap <- function() {
 calc_acy_cc_diff_pct <- function() {
     # This is agroc-climatically attainable yield for intermediate input level 
     # rain-fed maize for future period 2050s from Hadley CM3 B2 scenario
-    acy_fut <- raster(file.path(data_base, 'HarvestChoice', 'res02_h3a22020i_maiz150b_yld.tif'))
+    acy_fut <- raster(file.path(data_base, 'GAEZ', 'res02_h3a22020i_maiz150b_yld.tif'))
     acy_fut <- setup_raster_layer(acy_fut)
-    acy_cur <- raster(file.path(data_base, 'HarvestChoice', 'res02_crav6190i_maiz150b_yld.tif'))
+    acy_cur <- raster(file.path(data_base, 'GAEZ', 'res02_crav6190i_maiz150b_yld.tif'))
     acy_cur <- setup_raster_layer(acy_cur)
 
     save_raster(acy_cur, 'AGRA_TZA_acy_cur')
@@ -230,11 +273,18 @@ calc_road_density <- function() {
 }
 
 calc_pop_density <- function() {
-    # Compute population density per grid square
+    # Compute population density per grid square in 2015
     pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
     pop <- crop(pop, get_country_poly())
     pop <- setup_raster_layer(pop)
     writeRaster(pop, 'AGRA_TZA_pop_density_original.tif', overwrite=TRUE)
+
+    # Compute population density per grid square in 2020
+    pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
+    pop <- crop(pop, get_country_poly())
+    pop <- setup_raster_layer(pop)
+    writeRaster(pop, 'AGRA_TZA_pop_density_original.tif', overwrite=TRUE)
+
 
     pop <- aggregate(pop, fact=c(round(res(base)/res(pop))), expand=FALSE, 
                      fun=sum)
@@ -332,6 +382,32 @@ calc_dhs_weights <- function() {
     save_raster(underweight, 'AGRA_TZA_DHS_underweight')
 
     return(stack(stunted, wasted, underweight))
+}
+
+################################################################################
+# Soils data
+################################################################################
+
+process_soils_data <- function() {
+    # soil pH x 10 in H20 at depth 0.00m
+    ph <- raster('C:/Users/azvol/Desktop/Soils/PHIHOX_M_sl1_250m_ll.tif')
+    ph <- crop(ph, get_country_poly())
+    ph <- setup_raster_layer(ph, method='bilinear')
+    save_raster(ph, 'AGRA_TZA_soils_phihox_m_sl1_1km')
+
+    # cation exchange capacity of soil in cmolc/kg at depth 0.00m
+    cation <- raster('C:/Users/azvol/Desktop/Soils/CECSOL_M_sl1_250m_ll.tif')
+    cation <- crop(cation, get_country_poly())
+    cation <- setup_raster_layer(cation, method='bilinear')
+    save_raster(cation, 'AGRA_TZA_soils_cecsol_m_sl1_1km')
+
+    
+
+    org_carbon <- raster('C:/Users/azvol/Desktop/Soils/PHIHOX_M_sl1_250m_ll.tif')
+    org_carbon <- crop(org_carbon, get_country_poly())
+    org_carbon <- setup_raster_layer(org_carbon, method='bilinear')
+
+
 }
 
 ################################################################################
