@@ -390,23 +390,42 @@ calc_dhs_weights <- function() {
 
 process_soils_data <- function() {
     # soil pH x 10 in H20 at depth 0.00m
-    ph <- raster('C:/Users/azvol/Desktop/Soils/PHIHOX_M_sl1_250m_ll.tif')
+    ph <- raster(file.path(data_base, 'SoilGrids', 'PHIHOX_M_sl1_250m_ll.tif'))
     ph <- crop(ph, get_country_poly())
     ph <- setup_raster_layer(ph, method='bilinear')
-    save_raster(ph, 'AGRA_TZA_soils_phihox_m_sl1_1km')
+    save_raster(ph, 'AGRA_TZA_soils_phihox_m_sl1_10km')
 
     # cation exchange capacity of soil in cmolc/kg at depth 0.00m
-    cation <- raster('C:/Users/azvol/Desktop/Soils/CECSOL_M_sl1_250m_ll.tif')
+    cation <- raster(file.path(data_base, 'SoilGrids', 'CECSOL_M_sl1_250m_ll.tif'))
     cation <- crop(cation, get_country_poly())
     cation <- setup_raster_layer(cation, method='bilinear')
-    save_raster(cation, 'AGRA_TZA_soils_cecsol_m_sl1_1km')
-
+    save_raster(cation, 'AGRA_TZA_soils_cecsol_m_sl1_10km')
     
-
-    org_carbon <- raster('C:/Users/azvol/Desktop/Soils/PHIHOX_M_sl1_250m_ll.tif')
+    # soil organic carbon content (fine earth fraction) in g per kg at depth 
+    # 0.00m
+    org_carbon <- raster(file.path(data_base, 'SoilGrids', 'ORCDRC_M_sl1_250m_ll.tif'))
     org_carbon <- crop(org_carbon, get_country_poly())
     org_carbon <- setup_raster_layer(org_carbon, method='bilinear')
+    save_raster(org_carbon, 'AGRA_TZA_soils_orcdrc_m_sl1_10km')
 
+    # total phosphorus
+    p_total <- raster(file.path(data_base, 'SoilGrids', 'P.T_M_agg35cm_AF_250m.tif'))
+    country_poly <- spTransform(get_country_poly(), proj4string(p_total))
+    p_total <- crop(p_total, country_poly)
+    p_total <- setup_raster_layer(p_total, method='bilinear')
+    save_raster(p_total, 'AGRA_TZA_soils_p_t_m_agg35_10km')
+
+    # potassium extractable by Mehlich 3
+    k_total <- raster(file.path(data_base, 'SoilGrids', 'K_M_agg35cm_AF_250m.tif'))
+    k_total <- crop(k_total, country_poly)
+    k_total <- setup_raster_layer(k_total, method='bilinear')
+    save_raster(k_total, 'AGRA_TZA_soils_k_m_agg35_10km')
+    
+    # total (organic) nitrogen extractable by wet oxidation
+    n_total <- raster(file.path(data_base, 'SoilGrids', 'N_M_agg35cm_AF_250m.tif'))
+    n_total <- crop(n_total, country_poly)
+    n_total <- setup_raster_layer(n_total, method='bilinear')
+    save_raster(n_total, 'AGRA_TZA_soils_n_m_agg35_10km')
 
 }
 
