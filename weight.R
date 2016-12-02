@@ -50,11 +50,31 @@ save_suitability <- function(x, name) {
 
 # Yield gap as difference between potential and actual production. Note it is 
 # in 1000s of tons, so convert it to tons
-yg <- raster('AGRA_TZA_ygap_diff.tif') * 1000
+yg <- raster('AGRA_TZA_ygap_r_diff.tif') * 1000
+yg_i <- raster('AGRA_TZA_ygap_i_diff.tif') * 1000
+yg_ir <- raster('AGRA_TZA_ygap_ir_diff.tif') * 1000
+# Top code yield gap at 6000 tons / ha
+#yg[yg > 6000] <- 6000
 yg_norm <- norm_layer(yg)
 yield_diff_cc <- raster('AGRA_TZA_acy_diff.tif')
-yield_cur <- raster('AGRA_TZA_acy_cur.tif')
-yield_fut <- raster('AGRA_TZA_acy_fut.tif')
+
+# Load current and future agro-climatic yield
+acy_cur <- raster('AGRA_TZA_acy_cur.tif')
+acy_fut <- raster('AGRA_TZA_acy_fut.tif')
+
+# Load current rainfed yield (tons/ha)
+y_cur_r <- raster('AGRA_TZA_cur_r.tif')
+# Load current irrigated yield (tons/ha)
+y_cur_r <- raster('AGRA_TZA_cur_r.tif')
+# Load current agro-climatic yield for high input rainfed maize (in kg / ha), 
+# convert to tons/ha
+acy_r_h <- raster('AGRA_TZA_acy_r_h.tif') / 1000
+# Load current agro-climatic yield for low input rainfed maize (in kg / ha), 
+# convert to tons/ha
+acy_r_l <- raster('AGRA_TZA_acy_r_l.tif') / 1000
+
+yg_r_l <- acy_r_l - y_cur_r
+yg_r_h <- acy_r_h - y_cur_r
 
 # Note that calc_pixel_areas returns areas for each line of the raster, so need 
 # to rep by ncols
@@ -76,6 +96,9 @@ stunting <- norm_layer(raster('AGRA_TZA_DHS_stunted.tif'))
 underweight <- norm_layer(raster('AGRA_TZA_DHS_underweight.tif'))
 wasted <- norm_layer(raster('AGRA_TZA_DHS_wasted.tif'))
 
+# Make mask for AGRA regions
+agra_region_mask <- rasterize(regions, wasted, "agra_region")
+
 # Calculate difference in agro-climatic yield with climate change, and mask out 
 # areas that will see a decline in agro-climatic yield
 
@@ -88,7 +111,7 @@ calc_health <- function(stunting_w=1, underweight_w=1, wasted_w=1) {
 # TODO: mask out urban areas
 
 calc_suitability <- function(model, pop_w, road_w, health_w) {
-    stopifnot(model %in% c(0:3))
+    stopifnot(model %in% c(0:4))
     if (model == 0) {
         s <- yg_norm
         name <- paste0('AGRA_TZA_suitability_model_', model)
@@ -100,6 +123,10 @@ calc_suitability <- function(model, pop_w, road_w, health_w) {
         name <- paste0('AGRA_TZA_suitability_model_', model)
     } else if (model == 3) {
         s <- yg_norm * (yield_diff_cc > -5) * (1 - fc50) * (1 - pas) *
+               norm_layer(road_w * road_density + pop_w * pop_density + health_w * calc_health())
+        name <- paste0('AGRA_TZA_suitability_model_', model, '_p', pop_w, '_r', road_w, '_h', health_w)
+    } else if (model == 4) {
+        s <- yg_norm * (yield_diff_cc > -5) * (1 - fc50) * (1 - pas) * agra_region_mask *
                norm_layer(road_w * road_density + pop_w * pop_density + health_w * calc_health())
         name <- paste0('AGRA_TZA_suitability_model_', model, '_p', pop_w, '_r', road_w, '_h', health_w)
     }
@@ -115,6 +142,7 @@ m2 <- calc_suitability(2)
 m3_p1r1h1 <- calc_suitability(3, pop_w=1, road_w=1, health_w=1)
 m3_p1r1h0 <- calc_suitability(3, pop_w=1, road_w=1, health_w=0)
 m3_p0r0h1 <- calc_suitability(3, pop_w=0, road_w=0, health_w=1)
+m4_p1r1h1 <- calc_suitability(4, pop_w=1, road_w=1, health_w=1)
 
 ###############################################################################
 # Make plots
@@ -164,8 +192,8 @@ plot_areas <- function(m, n) {
 }
 
 names <- c('Model 0', 'Model 1', 'Model 2', 'Model 3 (p1r1h1)',
-           'Model 3 (p0r0h1)', 'Model 3 (p1r1h0)')
-models <- c(m0, m1, m2, m3_p1r1h1, m3_p0r0h1, m3_p1r1h0)
+           'Model 3 (p0r0h1)', 'Model 3 (p1r1h0)', 'Model 4 (p1r1h1)')
+models <- c(m0, m1, m2, m3_p1r1h1, m3_p0r0h1, m3_p1r1h0, m4_p1r1h1)
 
 ###############################################################################
 ### Make plots of intensification areas
@@ -262,9 +290,9 @@ foreach(m=models, name=names, .combine=rbind) %do% {
 
 p_by_region_agra <- filter(p_by_region,
                            region %in% agra_regions,
-                           model %in% c('Model 0', 'Model 3 (p1r1h1)'))
+                           model %in% c('Model 0', 'Model 4 (p1r1h1)'))
 p_by_region_agra$model <- ordered(p_by_region_agra$model,
-                            levels=c('Model 0', 'Model 3 (p1r1h1)'),
+                            levels=c('Model 0', 'Model 4 (p1r1h1)'),
                             labels=c('Standard approach', 'Resilient suitability'))
 
 ggplot(p_by_region_agra) +
