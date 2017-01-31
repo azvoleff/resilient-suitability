@@ -12,14 +12,13 @@ library(gfcanalysis)
 
 #data_base <- 'H:/Data'
 data_base <- 'O:/Data'
-iso3 <- 'TZA'
+iso3 <- 'EA'
 res_degrees <- .08333333
 clipsrc <- file.path(data_base, 'Global', 'GADM', 'TZA_adm0.shp')
 
 # Function of population, road access
 get_country_poly <- function() {
-    # TODO: Code to pull proper country based on iso3, hardcoded now for speed
-    readOGR(file.path(data_base, 'Global', 'GADM'), 'TZA_adm0')
+    readOGR(file.path(data_base, 'Global'), 'RWA_TZA_UGA')
 }
 
 setup_base_layer <- function() {
@@ -59,11 +58,6 @@ setup_vector_layer <- function(dataset) {
     readOGR(dirname(out_file), file_path_sans_ext(basename(out_file)))
 }
 
-polygonize <- function(x) {
-    x <- mask(x, get_country_poly())
-    rasterToPolygons(x)
-}
-
 save_raster <- function(x, name) {
     names(x) <- NULL
     x <- mask(x, get_country_poly())
@@ -94,51 +88,51 @@ calc_yield_gap <- function() {
     ygap_ir_diff <- raster(file.path(data_base, 'GAEZ', 
                                   'gap2000_t_mze_2000_qga.tif'))
     ygap_ir_diff <- setup_raster_layer(ygap_ir_diff)
-    save_raster(ygap_ir_diff, 'AGRA_TZA_ygap_ir_diff')
+    save_raster(ygap_ir_diff, 'AGRA_EA_ygap_ir_diff')
 
     # Difference of potential and actual production for irrigated maize
     ygap_i_diff <- raster(file.path(data_base, 'GAEZ', 
                                   'gap2000_i_mze_2000_qga.tif'))
     ygap_i_diff <- setup_raster_layer(ygap_i_diff)
-    save_raster(ygap_i_diff, 'AGRA_TZA_ygap_i_diff')
+    save_raster(ygap_i_diff, 'AGRA_EA_ygap_i_diff')
 
     # Difference of potential and actual production for rain-fed maize
     ygap_r_diff <- raster(file.path(data_base, 'GAEZ', 
                                   'gap2000_r_mze_2000_qga.tif'))
     ygap_r_diff <- setup_raster_layer(ygap_r_diff)
-    save_raster(ygap_r_diff, 'AGRA_TZA_ygap_r_diff')
+    save_raster(ygap_r_diff, 'AGRA_EA_ygap_r_diff')
 
     # Agro-climatically attainable yield for low-input rain-fed maize in kg per 
     # ha
     acy_cur_r_l <- raster(file.path(data_base, 'GAEZ',
                                     'res02_crav6190l_maiz150b_yld.tif'))
     acy_cur_r_l <- setup_raster_layer(acy_cur_r_l)
-    save_raster(acy_cur_r_l, 'AGRA_TZA_acy_r_l')
+    save_raster(acy_cur_r_l, 'AGRA_EA_acy_r_l')
 
     # Agro-climatically attainable yield for high-input rain-fed maize in kg 
     # per ha
     acy_cur_r_h <- raster(file.path(data_base, 'GAEZ',
                                     'res02_crav6190h_maiz150b_yld.tif'))
     acy_cur_r_h <- setup_raster_layer(acy_cur_r_h)
-    save_raster(acy_cur_r_h, 'AGRA_TZA_acy_r_h')
+    save_raster(acy_cur_r_h, 'AGRA_EA_acy_r_h')
 
     # Yield in 2000 of rainfed maize - tons/ha
     y_cur_r <- raster(file.path(data_base, 'GAEZ',
                                     'act2000_r_mze_2000_yld.tif'))
     y_cur_r <- setup_raster_layer(y_cur_r)
-    save_raster(y_cur_r, 'AGRA_TZA_cur_r')
+    save_raster(y_cur_r, 'AGRA_EA_cur_r')
 
     # Yield in 2000 of irrigated maize - tons/ha
     y_cur_i <- raster(file.path(data_base, 'GAEZ',
                                     'act2000_i_mze_2000_yld.tif'))
     y_cur_i <- setup_raster_layer(y_cur_i)
-    save_raster(y_cur_i, 'AGRA_TZA_cur_i')
+    save_raster(y_cur_i, 'AGRA_EA_cur_i')
 
     # Yield gap 2000 of irrigated maize - tons/ha
     y_cur_i <- raster(file.path(data_base, 'GAEZ',
                                     'act2000_i_mze_2000_yld.tif'))
     y_cur_i <- setup_raster_layer(y_cur_i)
-    save_raster(y_cur_i, 'AGRA_TZA_cur_i')
+    save_raster(y_cur_i, 'AGRA_EA_cur_i')
 
     # Normalize by largest gap
     #ygap_diff_norm <- ygap_diff / cellStats(ygap_diff, 'max')
@@ -155,13 +149,13 @@ calc_acy_cc_diff_pct <- function() {
     acy_cur <- raster(file.path(data_base, 'GAEZ', 'res02_crav6190i_maiz150b_yld.tif'))
     acy_cur <- setup_raster_layer(acy_cur)
 
-    save_raster(acy_cur, 'AGRA_TZA_acy_cur')
-    save_raster(acy_fut, 'AGRA_TZA_acy_fut')
+    save_raster(acy_cur, 'AGRA_EA_acy_cur')
+    save_raster(acy_fut, 'AGRA_EA_acy_fut')
 
     # Calculate difference in agro-climatic yield with climate change as a 
     # percentage of current agroclimatic yield
     acy_diff <- ((acy_fut - acy_cur) / acy_cur) * 100
-    save_raster(acy_diff, 'AGRA_TZA_acy_diff')
+    save_raster(acy_diff, 'AGRA_EA_acy_diff')
 
     return(acy_diff)
 }
@@ -176,7 +170,7 @@ calc_acy_cc_diff_pct <- function() {
 # Exclude areas from consideration based on Forest Cover (Hansen et al.  2013)
 calc_forest_areas <- function(threshold=50) {
     # Forest Cover Hansen et al. (2013)
-    out_file <- file.path(data_base, 'AGRA/gfc_extract.tif')
+    out_file <- file.path(data_base, 'AGRA/gfc_extract_EA.tif')
     output_folder <- file.path(data_base, 'GFC_Product')
     if (!file_test('-f', out_file)) {
         aoi <- get_country_poly()
@@ -205,7 +199,8 @@ calc_forest_areas <- function(threshold=50) {
             ux[which.max(tabulate(match(f2015, ux)))]
         })
     forest_2015 <- setup_raster_layer(forest_2015)
-    save_raster(forest_2015, paste0('AGRA_forest_2015_', threshold))
+    save_raster(forest_2015, paste0('AGRA_EA_forest_2015_', threshold))
+
     return(forest_2015)
 }
 
@@ -218,7 +213,8 @@ calc_prot_areas <- function() {
     wdpa <- setup_vector_layer(dataset)
     wdpa <- gUnaryUnion(wdpa)
     wdpa <- rasterize(wdpa, base, 1, background=0)
-    save_raster(wdpa, 'AGRA_TZA_wdpa')
+    save_raster(wdpa, 'AGRA_EA_wdpa')
+
     return(wdpa)
 }
 
@@ -229,6 +225,7 @@ calc_prot_areas <- function() {
 ################################################################################
 
 calc_road_density <- function() {
+
     in_database <- file.path(data_base, 'GROADS', 'gROADS_v1.gdb')
     # TODO: Need to buffer the spat to account for roads that may fall 
     # outside national border but still be closs enough to affect access.
@@ -249,7 +246,7 @@ calc_road_density <- function() {
     roads <- SpatialLinesDataFrame(roads,
                                    data=data.frame(id=1:length(roads), 
                                                    row.names=row.names(roads)))
-    writeOGR(roads, 'AGRA_TZA_groads.kml', 'groads', driver='KML', 
+    writeOGR(roads, 'AGRA_EA_groads.kml', 'groads', driver='KML', 
              overwrite=TRUE)
 
     # Compute road density per grid square
@@ -268,29 +265,24 @@ calc_road_density <- function() {
 
     road_density <- projectRaster(r, crs=proj4string(base))
     road_density <- setup_raster_layer(road_density)
-    save_raster(road_density, 'AGRA_TZA_groads_density')
+    save_raster(road_density, 'AGRA_EA_groads_density')
+
     return(road_density)
 }
 
 calc_pop_density <- function() {
     # Compute population density per grid square in 2015
-    pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
+    pop <- raster(file.path(data_base, 'GPWv4', 'gpw-v4-population-count_2015.tif'))
     pop <- crop(pop, get_country_poly())
     pop <- setup_raster_layer(pop)
-    writeRaster(pop, 'AGRA_TZA_pop_density_original.tif', overwrite=TRUE)
+    save_raster(pop, 'AGRA_EA_pop_count_2015')
 
     # Compute population density per grid square in 2020
-    pop <- raster(file.path(data_base, 'Landscan', 'Landscan2014', 'landscan_2014.tif'))
+    pop <- raster(file.path(data_base, 'GPWv4', 'gpw-v4-population-count_2020.tif'))
     pop <- crop(pop, get_country_poly())
     pop <- setup_raster_layer(pop)
-    writeRaster(pop, 'AGRA_TZA_pop_density_original.tif', overwrite=TRUE)
+    save_raster(pop, 'AGRA_EA_pop_count_2020')
 
-
-    pop <- aggregate(pop, fact=c(round(res(base)/res(pop))), expand=FALSE, 
-                     fun=sum)
-    # Convert to pop/km^2
-    pop <- pop/(10*10)
-    save_raster(pop, 'AGRA_TZA_pop_density')
     return(pop)
 }
 
@@ -345,41 +337,46 @@ calc_dhs_weights <- function() {
               'CN_NUTS_C_WA2', # percent children underweight
               'CN_NUTS_C_WH2') # percent children wasted
 
-    dhs_vars <- get_indic(vars, countryIds='TZ')
+    dhs_vars <- get_indic(vars, countryIds=c('TZ', 'RW', 'UG'))
 
     dhs_vars$SurveyYear <- as.numeric(dhs_vars$SurveyYear)
     dhs_vars$Value <- as.numeric(dhs_vars$Value)
 
     names(dhs_vars)[names(dhs_vars) == "RegionId"] <- 'REG_ID'
-
-    # Filter to only include most recent data
-    dhs_vars <- dhs_vars[dhs_vars$SurveyYear == max(dhs_vars$SurveyYear), ]
+    dhs_vars <- spread(select(dhs_vars, Indicator, Value, REG_ID), Indicator, Value)
 
     #ggplot(dhs_vars) + geom_point(aes(Indicator, Value))
 
-    # Join Tanzania polygons
+    # Join region polygons
     dhs_regions_database <- file.path(data_base, 'DHS', 'DHS_Regions', 'DHS_Regions_SDR.gdb')
     out_file <- tempfile(fileext='.shp')
-    ogr2ogr(dhs_regions_database, out_file, clipsrcsql="select * from DHS_Regions_SDR where ISO='TZ'")
+    ogr2ogr(dhs_regions_database, out_file, clipsrcsql="select * from DHS_Regions_SDR where ISO in ('TZ', 'UG', 'RW')")
     dhs_regions <- readOGR(dirname(out_file), file_path_sans_ext(basename(out_file)))
-    dhs_regions <- dhs_regions[dhs_regions$ISO == 'TZ', ]
+    dhs_regions <- dhs_regions[dhs_regions$ISO %in% c('TZ', 'UG', 'RW'), ]
 
     dhs_regions <- dhs_regions[dhs_regions$REG_ID %in% dhs_vars$REG_ID, ]
 
-    dhs_vars <- spread(select(dhs_vars, Indicator, Value, REG_ID), Indicator, Value)
-
     dhs_regions@data <- left_join(dhs_regions@data, dhs_vars)
 
-    writeOGR(dhs_regions, 'AGRA_TZA_DHS_indicators.geojson', 
-             'AGRA_TZA_DHS_indicators', driver='GeoJSON')
+    # Filter to only include most recent data
+    included_regions <- group_by(dhs_regions@data, ISO) %>%
+        filter(SVYYEAR == max(SVYYEAR))
+
+    dhs_regions <- dhs_regions[dhs_regions$REG_ID %in% included_regions$REG_ID, ]
+
+    # TZA is representative at two levels. Drop the "Zones"
+    dhs_regions <- dhs_regions[dhs_regions$LEVELNA != 'Zones', ]
+
+    writeOGR(dhs_regions, 'AGRA_EA_DHS_indicators.geojson', 
+             'AGRA_EA_DHS_indicators', driver='GeoJSON')
 
     # Make rasters of each dhs layer
     stunted <- rasterize(dhs_regions, base, "Children stunted", background=NA)
-    save_raster(stunted, 'AGRA_TZA_DHS_stunted')
+    save_raster(stunted, 'AGRA_EA_DHS_stunted')
     wasted <- rasterize(dhs_regions, base, "Children wasted", background=NA)
-    save_raster(wasted, 'AGRA_TZA_DHS_wasted')
+    save_raster(wasted, 'AGRA_EA_DHS_wasted')
     underweight <- rasterize(dhs_regions, base, "Children underweight", background=NA)
-    save_raster(underweight, 'AGRA_TZA_DHS_underweight')
+    save_raster(underweight, 'AGRA_EA_DHS_underweight')
 
     return(stack(stunted, wasted, underweight))
 }
@@ -393,39 +390,39 @@ process_soils_data <- function() {
     ph <- raster(file.path(data_base, 'SoilGrids', 'PHIHOX_M_sl1_250m_ll.tif'))
     ph <- crop(ph, get_country_poly())
     ph <- setup_raster_layer(ph, method='bilinear')
-    save_raster(ph, 'AGRA_TZA_soils_phihox_m_sl1_10km')
+    save_raster(ph, 'AGRA_EA_soils_phihox_m_sl1_10km')
 
     # cation exchange capacity of soil in cmolc/kg at depth 0.00m
     cation <- raster(file.path(data_base, 'SoilGrids', 'CECSOL_M_sl1_250m_ll.tif'))
     cation <- crop(cation, get_country_poly())
     cation <- setup_raster_layer(cation, method='bilinear')
-    save_raster(cation, 'AGRA_TZA_soils_cecsol_m_sl1_10km')
+    save_raster(cation, 'AGRA_EA_soils_cecsol_m_sl1_10km')
     
     # soil organic carbon content (fine earth fraction) in g per kg at depth 
     # 0.00m
     org_carbon <- raster(file.path(data_base, 'SoilGrids', 'ORCDRC_M_sl1_250m_ll.tif'))
     org_carbon <- crop(org_carbon, get_country_poly())
     org_carbon <- setup_raster_layer(org_carbon, method='bilinear')
-    save_raster(org_carbon, 'AGRA_TZA_soils_orcdrc_m_sl1_10km')
+    save_raster(org_carbon, 'AGRA_EA_soils_orcdrc_m_sl1_10km')
 
     # total phosphorus
     p_total <- raster(file.path(data_base, 'SoilGrids', 'P.T_M_agg35cm_AF_250m.tif'))
     country_poly <- spTransform(get_country_poly(), proj4string(p_total))
     p_total <- crop(p_total, country_poly)
     p_total <- setup_raster_layer(p_total, method='bilinear')
-    save_raster(p_total, 'AGRA_TZA_soils_p_t_m_agg35_10km')
+    save_raster(p_total, 'AGRA_EA_soils_p_t_m_agg35_10km')
 
     # potassium extractable by Mehlich 3
     k_total <- raster(file.path(data_base, 'SoilGrids', 'K_M_agg35cm_AF_250m.tif'))
     k_total <- crop(k_total, country_poly)
     k_total <- setup_raster_layer(k_total, method='bilinear')
-    save_raster(k_total, 'AGRA_TZA_soils_k_m_agg35_10km')
+    save_raster(k_total, 'AGRA_EA_soils_k_m_agg35_10km')
     
     # total (organic) nitrogen extractable by wet oxidation
     n_total <- raster(file.path(data_base, 'SoilGrids', 'N_M_agg35cm_AF_250m.tif'))
     n_total <- crop(n_total, country_poly)
     n_total <- setup_raster_layer(n_total, method='bilinear')
-    save_raster(n_total, 'AGRA_TZA_soils_n_m_agg35_10km')
+    save_raster(n_total, 'AGRA_EA_soils_n_m_agg35_10km')
 
 }
 
