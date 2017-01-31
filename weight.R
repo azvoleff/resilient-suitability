@@ -99,6 +99,13 @@ wasted <- norm_layer(raster('AGRA_TZA_DHS_wasted.tif'))
 # Make mask for AGRA regions
 agra_region_mask <- rasterize(regions, wasted, "agra_region")
 
+ph <- raster('AGRA_TZA_soils_phihox_m_sl1_10km.tif') / 10
+
+ph_weighted <- ph
+ph_weighted[] <- 1
+ph_weighted[ph < 5.5] <- .5
+ph_weighted[ph > 7.5] <- .5
+
 # Calculate difference in agro-climatic yield with climate change, and mask out 
 # areas that will see a decline in agro-climatic yield
 
@@ -111,7 +118,7 @@ calc_health <- function(stunting_w=1, underweight_w=1, wasted_w=1) {
 # TODO: mask out urban areas
 
 calc_suitability <- function(model, pop_w, road_w, health_w) {
-    stopifnot(model %in% c(0:4))
+    stopifnot(model %in% c(0:5))
     if (model == 0) {
         s <- yg_norm
         name <- paste0('AGRA_TZA_suitability_model_', model)
@@ -129,6 +136,11 @@ calc_suitability <- function(model, pop_w, road_w, health_w) {
         s <- yg_norm * (yield_diff_cc > -5) * (1 - fc50) * (1 - pas) * agra_region_mask *
                norm_layer(road_w * road_density + pop_w * pop_density + health_w * calc_health())
         name <- paste0('AGRA_TZA_suitability_model_', model, '_p', pop_w, '_r', road_w, '_h', health_w)
+    } else if (model == 5) {
+        s <- yg_norm * (yield_diff_cc > -5) * (1 - fc50) * (1 - pas) *
+               norm_layer(road_w * road_density + pop_w * pop_density + health_w * calc_health() +
+               ph_weighted)
+        name <- paste0('AGRA_TZA_suitability_model_', model, '_p', pop_w, '_r', road_w, '_h', health_w)
     }
     s <- norm_layer(s)
     names(s) <- NULL
@@ -143,6 +155,7 @@ m3_p1r1h1 <- calc_suitability(3, pop_w=1, road_w=1, health_w=1)
 m3_p1r1h0 <- calc_suitability(3, pop_w=1, road_w=1, health_w=0)
 m3_p0r0h1 <- calc_suitability(3, pop_w=0, road_w=0, health_w=1)
 m4_p1r1h1 <- calc_suitability(4, pop_w=1, road_w=1, health_w=1)
+m5_p1r1h0 <- calc_suitability(5, pop_w=1, road_w=1, health_w=1)
 
 ###############################################################################
 # Make plots
