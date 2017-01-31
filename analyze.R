@@ -274,12 +274,16 @@ calc_pop_density <- function() {
     # Compute population density per grid square in 2015
     pop <- raster(file.path(data_base, 'GPWv4', 'gpw-v4-population-count_2015.tif'))
     pop <- crop(pop, get_country_poly())
+    pop <- mask(pop, get_country_poly())
+    writeRaster(pop, 'AGRA_EA_pop_count_2015_fullres.tif')
     pop <- setup_raster_layer(pop)
     save_raster(pop, 'AGRA_EA_pop_count_2015')
 
     # Compute population density per grid square in 2020
     pop <- raster(file.path(data_base, 'GPWv4', 'gpw-v4-population-count_2020.tif'))
     pop <- crop(pop, get_country_poly())
+    pop <- mask(pop, get_country_poly())
+    writeRaster(pop, 'AGRA_EA_pop_count_2020_fullres.tif')
     pop <- setup_raster_layer(pop)
     save_raster(pop, 'AGRA_EA_pop_count_2020')
 
