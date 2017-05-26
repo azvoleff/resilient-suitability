@@ -34,7 +34,8 @@ setup_raster_layer <- function(x, method='ngb') {
     if (!compareCRS(x, base)) {
         x <- projectRaster(x, crs=proj4string(base), method=method)
     }
-    if (!identical(round(res(base)/res(x)), c(1, 1)) & ((xres(base) > xres(x)) | (yres(x) > yres(base)))) {
+    if (!identical(round(res(base)/res(x)), c(1, 1)) &
+        ((xres(base) > xres(x)) | (yres(x) > yres(base)))) {
         if (method == 'ngb') {
             # Aggregate x to the same resolution as base using mode if categorical data
             x <- aggregate(x, round(res(base)/res(x)),
